@@ -55,6 +55,7 @@ CATEGORY_MAP = {
     "ALPRAZOLAM": "Anksiyolitik/Uyku-Bağımlılık Riskli", "ZOLPİDEM": "Anksiyolitik/Uyku-Bağımlılık Riskli", "DİAZEPAM": "Anksiyolitik/Uyku-Bağımlılık Riskli",
 
 
+
     "SUMATRİPTAN": "Migren", "KSİLOMETAZOLİN": "Nazal Dekonjestan", "OKSİMETAZOLİN": "Nazal Dekonjestan",
     "LOPERAMİD": "Antidiyareik", "METOKLOPRAMİD": "Antiemetik"
 }
