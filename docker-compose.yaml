@@ -44,24 +44,25 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   mediscope_app:
-    build: .
-    container_name: mediscope_core
-    depends_on:
-      - postgres
-      - kafka
-    volumes:
-      - ./data:/app/data
-      - ./src:/app/src
-      - ./main.py:/app/main.py
-    environment:
-      - ENVIRONMENT=development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=mediscope_user
-      - DB_PASSWORD=mediscope_password
-      - DB_NAME=mediscope
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-    command: tail -f /dev/null
+      build: .
+      container_name: mediscope_core
+      depends_on:
+        - postgres
+        - kafka
+      volumes:
+        - ./data:/app/data
+        - ./src:/app/src
+        - ./tests:/app/tests 
+        - ./main.py:/app/main.py
+      environment:
+        - ENVIRONMENT=development
+        - DB_HOST=postgres
+        - DB_PORT=5432
+        - DB_USER=mediscope_user
+        - DB_PASSWORD=mediscope_password
+        - DB_NAME=mediscope
+        - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      command: tail -f /dev/null
 
 volumes:
   pgdata:
