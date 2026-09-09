@@ -2,24 +2,17 @@ import os
 import pytest
 import pandas as pd
 from sqlalchemy import create_engine, text
-
-DB_USER = os.getenv("DB_USER", "mediscope_user")
-DB_PASS = os.getenv("DB_PASSWORD", "mediscope_password")
-DB_HOST = os.getenv("DB_HOST", "postgres")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "mediscope")
-
-DB_URI = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+from src.core.config import settings
 
 @pytest.fixture(scope="module")
 def db_engine():
-    engine = create_engine(DB_URI)
+    engine = create_engine(settings.DB_URI)
     yield engine
     engine.dispose()
 
 @pytest.fixture(scope="module")
 def db_engine():
-    engine = create_engine(DB_URI)
+    engine = create_engine(settings.DB_URI)
     yield engine
     engine.dispose()
 
@@ -43,15 +36,15 @@ def test_create_table_and_insert(db_engine):
     })
     
     try:
-            # Pandas'ın kendi içinde güvenle bağlanması için doğrudan DB_URI string'ini veriyoruz
+
             test_df.to_sql(
                 name="test_drugs_temp",
-                con=DB_URI,
+                con=settings.DB_URI,
                 if_exists="replace",
                 index=False
             )
     
-            # Doğrulama işlemini standart bağlantı ile yap
+
             with db_engine.connect() as conn:
                 count = conn.execute(text("SELECT COUNT(*) FROM test_drugs_temp")).scalar()
                 assert count == 2, f"Beklenen 2 satır, ancak {count} satır bulundu."

@@ -13,3 +13,5 @@ class Patient(Base):
     @property
     def is_child(self) -> bool:
         return self.age < 18
+
+

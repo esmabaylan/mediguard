@@ -71,7 +71,7 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
 
         chrome_options = Options()
         
-        # Bot korumalarını atlatmak için Stealth ayarları
+
         chrome_options.add_argument("--headless=new") 
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -80,13 +80,13 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
         
         driver = webdriver.Chrome(options=chrome_options)
         
-        # Webdriver değişkenini silerek sistemleri kandır
+
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
         print("TİTCK sayfası yükleniyor...")
         driver.get(target_url)
         
-        # Sayfada 100 kayıt gösterme ayarı
+
         try:
             WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.NAME, "posts_length")))
             select = Select(driver.find_element(By.NAME, "posts_length"))
@@ -124,7 +124,7 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
             f.flush()
             print(f"Sayfa {current_page} tamamlandı. ({len(rows)} ilaç kaydedildi)")
                 
-            # Stale Element korumalı sonraki sayfaya geçiş
+
             clicked = False
             for attempt in range(3):
                 try:
