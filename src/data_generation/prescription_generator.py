@@ -1,105 +1,69 @@
-import os
+import json
 import time
-import uuid
 import random
-from datetime import datetime
-import pandas as pd
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import uuid
+from kafka import KafkaProducer
+from sqlalchemy.orm import Session
 
-from src.core.db import Base
-from src.models.prescription import Prescription
-from src.models.alert import Alert 
+from src.core.config import settings
+from src.core.db import SessionLocal
+from src.models.patient import Patient
+from src.models.drug import Drug
+from src.utils.logger import logger
 
-DB_URI = f"postgresql://{os.getenv('DB_USER', 'mediscope_user')}:{os.getenv('DB_PASSWORD', 'mediscope_password')}@{os.getenv('DB_HOST', 'postgres')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'mediscope')}"
-
-INTERACTION_RULES = {
-    "Kolesterol": ["Antibiyotik", "Antiviral"],
-    "Kalp/Tansiyon": ["Ağrı Kesici"],
-    "Psikiyatri": ["Sinir Sistemi-Bağımlılık Riskli", "Ağrı Kesici"],
-    "Mide": ["Antibiyotik"]
-}
-
-def get_reference_data(engine):
-    patients_df = pd.read_sql("SELECT patient_id, age, weight_kg, chronic_disease FROM patients", engine)
-    drugs_df = pd.read_sql("SELECT drug_id, category, is_weight_based FROM drugs", engine)
-    return patients_df, drugs_df
-
-def check_drug_interaction(session, patient_id, new_category, drugs_df):
-    past_prescriptions = session.query(Prescription).filter(Prescription.patient_id == patient_id).all()
-    if not past_prescriptions:
-        return False, None
-        
-    past_drug_ids = [rx.drug_id for rx in past_prescriptions]
-    past_categories = drugs_df[drugs_df['drug_id'].isin(past_drug_ids)]['category'].tolist()
+def start_generating_prescriptions():
+    logger.info("[INFO] Recete Uretici (Producer) baslatiliyor...")
     
-    for past_cat in past_categories:
-        if past_cat in INTERACTION_RULES.get(new_category, []) or new_category in INTERACTION_RULES.get(past_cat, []):
-            return True, past_cat
-            
-    return False, None
-
-def generate_and_save_prescription(session, patients_df, drugs_df):
-    patient = patients_df.sample(1).iloc[0]
-    drug = drugs_df.sample(1).iloc[0]
-    
-    is_conflict, conflicting_category = check_drug_interaction(session, patient['patient_id'], drug['category'], drugs_df)
-    
-    if is_conflict:
-
-        new_alert = Alert(
-            alert_id=str(uuid.uuid4()),
-            patient_id=patient['patient_id'],
-            alert_type="DDI_BLOCKED",
-            attempted_category=drug['category'],
-            conflicting_category=conflicting_category,
-            created_at=datetime.utcnow()
-        )
-        session.add(new_alert)
-        session.commit()
-        
-        print(f"[BLOKE & LOGLANDI] Hasta: {patient['patient_id'][:8]} | Yeni: {drug['category']} <-> Eski: {conflicting_category}!")
-        return None
-    
-    base_dose = random.uniform(50.0, 500.0)
-    if patient['age'] < 18 and drug['is_weight_based']:
-        daily_dose = round(base_dose * (patient['weight_kg'] / 10), 1) 
-    else:
-        daily_dose = round(base_dose, 1)
-
-    new_prescription = Prescription(
-        prescription_id=str(uuid.uuid4()),
-        patient_id=patient['patient_id'],
-        drug_id=drug['drug_id'],
-        daily_dosage_mg=daily_dose,
-        frequency_per_day=random.randint(1, 4),
-        duration_days=random.randint(3, 30),
-        created_at=datetime.utcnow()
+    producer = KafkaProducer(
+        bootstrap_servers=settings.KAFKA_BROKER,
+        value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+        retries=3
     )
     
-    session.add(new_prescription)
-    session.commit()
+    db: Session = SessionLocal()
     
-    print(f"[KAYDEDİLDİ] Hasta: {patient['patient_id'][:8]} | İlaç: {drug['category']} | Doz: {daily_dose}mg")
-    return new_prescription
-
-def start_prescription_stream():
-    engine = create_engine(DB_URI)
-    Base.metadata.create_all(bind=engine) 
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    
-    patients_df, drugs_df = get_reference_data(engine)
-    
-    print("Loglamalı Risk Motoru başlatıldı! (Çıkış için CTRL+C)")
-    session = SessionLocal()
     try:
-        while True:
-            generate_and_save_prescription(session, patients_df, drugs_df)
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nAkış durduruldu.")
-    finally:
-        session.close()
+        patients = db.query(Patient).all()
+        drugs = db.query(Drug).all()
+        
+        if not patients or not drugs:
+            logger.error("[ERROR] Veritabaninda hasta veya ilac bulunamadi.")
+            return
 
-if __name__ == "__main__":
-    start_prescription_stream()
+        logger.info("[INFO] Simulasyon basladi. Coklu ilac icerebilen receteler uretiliyor...")
+        
+        while True:
+            patient = random.choice(patients)
+            
+            # 1 ile 4 arası rastgele sayıda ilaç seç (Aynı ilacı tekrar seçmemek için sample kullanıyoruz)
+            num_drugs = random.randint(1, 4)
+            selected_drugs = random.sample(drugs, num_drugs)
+            
+            # Seçilen ilaçları bir listeye doldur
+            medications = []
+            for drug in selected_drugs:
+                medications.append({
+                    "drug_id": str(drug.drug_id),
+                    "drug_name": drug.name,
+                    "drug_category": getattr(drug, 'category', 'General'),
+                    "daily_dosage_mg": random.randint(10, 500)
+                })
+            
+            # Yeni JSON şablonumuz (Artık tek bir drug_id yerine medications listesi var)
+            event = {
+                "prescription_id": str(uuid.uuid4()),
+                "patient_id": str(patient.patient_id),
+                "patient_age": patient.age,
+                "patient_weight": float(patient.weight_kg) if patient.weight_kg else None,
+                "medications": medications,
+                "timestamp": time.time()
+            }
+            
+            producer.send(settings.PRESCRIPTION_TOPIC, event)
+            time.sleep(random.uniform(0.5, 2.0))
+            
+    except Exception as e:
+        logger.error(f"[ERROR] Uretici motorunda hata: {str(e)}")
+    finally:
+        db.close()
+        producer.close()

@@ -6,22 +6,23 @@ import uuid
 import sys
 import os
 from sqlalchemy import create_engine
+
 from src.core.db import Base
 from src.models.drug import Drug 
 from src.core.config import settings
-
+from src.utils.logger import logger
 
 CSV_PATH = r"/app/data/raw/processed/titck_enriched_clean.csv"
 
 def load_csv():
-    print("CSV okunuyor...")
+    logger.info("CSV okunuyor...")
     df = pd.read_csv(CSV_PATH)
-    print(f"  {len(df)} satır, {len(df.columns)} kolon okundu.")
+    logger.info(f"  {len(df)} satır, {len(df.columns)} kolon okundu.")
     return df
 
 
 def transform_data(df):
-    print("Veri ORM şemasına uygun olarak dönüştürülüyor...")
+    logger.info("Veri ORM şemasına uygun olarak dönüştürülüyor...")
     
     df['drug_id'] = [str(uuid.uuid4()) for _ in range(len(df))]
     
@@ -51,7 +52,7 @@ def transform_data(df):
     
     return df[db_cols]
 def insert_data(df):
-    print("Veritabanına bağlanılıyor ve veriler aktarılıyor...")
+    logger.info("Veritabanına bağlanılıyor ve veriler aktarılıyor...")
     conn = psycopg2.connect(settings.DB_URI)
     cur = conn.cursor()
 
@@ -76,22 +77,22 @@ def insert_data(df):
   
     rows = [tuple(x) for x in df_insert.to_numpy()]
 
-    print(f"  {len(rows)} satır yükleniyor (batch=1000)...")
+    logger.info(f"  {len(rows)} satır yükleniyor (batch=1000)...")
     execute_batch(cur, insert_sql, rows, page_size=1000)
     conn.commit()
 
     cur.close()
     conn.close()
-    print("  Aktarım tamamlandı.")
+    logger.info("  Aktarım tamamlandı.")
 
 def verify():
-    print("Veriler doğrulanıyor...")
+    logger.info("Veriler doğrulanıyor...")
     conn = psycopg2.connect(settings.DB_URI)
     cur = conn.cursor()
 
     cur.execute("SELECT COUNT(*) FROM drugs;")
     count = cur.fetchone()[0]
-    print(f"  drugs tablosundaki toplam satır: {count}")
+    logger.info(f"  drugs tablosundaki toplam satır: {count}")
 
     cur.execute("""
         SELECT category, COUNT(*)
@@ -99,9 +100,9 @@ def verify():
         GROUP BY category
         ORDER BY COUNT(*) DESC;
     """)
-    print("  Kategori Dağılımı:")
+    logger.info("  Kategori Dağılımı:")
     for row in cur.fetchall():
-        print(f"    {row[0]}: {row[1]} ilaç")
+        logger.info(f"    {row[0]}: {row[1]} ilaç")
 
     cur.close()
     conn.close()
@@ -110,19 +111,19 @@ if __name__ == "__main__":
     try:
 
 
-        print("Veritabanı şeması kontrol ediliyor...")
+        logger.info("Veritabanı şeması kontrol ediliyor...")
      
         engine_uri = settings.DB_URI
         engine = create_engine(engine_uri)
         Base.metadata.create_all(bind=engine)
-        print("Tablo şeması hazır!")
+        logger.info("Tablo şeması hazır!")
 
     
         raw_df = load_csv()
         transformed_df = transform_data(raw_df)
         insert_data(transformed_df)
         verify()
-        print("\nİşlem Başarılı!")
+        logger.info("\nİşlem Başarılı!")
     except Exception as e:
-        print(f"\nHata: {e}")
+        logger.error(f"\nHata: {e}")
         sys.exit(1)

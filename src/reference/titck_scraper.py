@@ -9,6 +9,8 @@ import csv
 import os
 import re
 
+from src.utils.logger import logger
+
 def categorize_drug_by_ingredient(active_ingredient_text):
     if not active_ingredient_text:
         return "Belirsiz"
@@ -83,7 +85,7 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
 
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
-        print("TİTCK sayfası yükleniyor...")
+        logger.info("TİTCK sayfası yükleniyor...")
         driver.get(target_url)
         
 
@@ -91,15 +93,15 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
             WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.NAME, "posts_length")))
             select = Select(driver.find_element(By.NAME, "posts_length"))
             select.select_by_value("100")
-            print("Sayfa başına kayıt sayısı 100 olarak ayarlandı. Hızlandırılıyor...")
+            logger.info("Sayfa başına kayıt sayısı 100 olarak ayarlandı. Hızlandırılıyor...")
             time.sleep(3)
         except Exception as e:
-            print("Kayıt sayısı değiştirilemedi:", e)
+            logger.error("Kayıt sayısı değiştirilemedi:", e)
         
         current_page = 1
         
         while True:
-            print(f"\n--- Sayfa {current_page} İşleniyor ---")
+            logger.info(f"\n--- Sayfa {current_page} İşleniyor ---")
             
             WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "posts")))
             
@@ -122,7 +124,7 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
                 })
                 
             f.flush()
-            print(f"Sayfa {current_page} tamamlandı. ({len(rows)} ilaç kaydedildi)")
+            logger.info(f"Sayfa {current_page} tamamlandı. ({len(rows)} ilaç kaydedildi)")
                 
 
             clicked = False
@@ -133,7 +135,7 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
                     )
                     
                     if "disabled" in next_button.get_attribute("class"):
-                        print("\nSon sayfaya ulaşıldı, tüm veriler başarıyla çekildi.")
+                        logger.info("\nSon sayfaya ulaşıldı, tüm veriler başarıyla çekildi.")
                         clicked = True
                         break
                         
@@ -144,11 +146,11 @@ def parse_titck_table(target_url="https://titck.gov.tr/kubkt"):
                     break 
                     
                 except Exception as e:
-                    print(f"Sayfa geçişi yenileniyor (Deneme {attempt+1}/3)...")
+                    logger.error(f"Sayfa geçişi yenileniyor (Deneme {attempt+1}/3): {e}")
                     time.sleep(2)
                     
             if not clicked:
-                print("Maksimum deneme aşıldı, sonraki sayfaya geçilemiyor.")
+                logger.error("Maksimum deneme aşıldı, sonraki sayfaya geçilemiyor.")
                 break
                 
         driver.quit()

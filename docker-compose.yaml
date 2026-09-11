@@ -27,9 +27,9 @@ services:
     ports:
       - "8090:8080"
     environment:
+      - DYNAMIC_CONFIG_ENABLED=true
       - KAFKA_CLUSTERS_0_NAME=MediGuard-Cluster
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
-      - DYNAMIC_CONFIG_ENABLED=true
     depends_on:
       - kafka
       
@@ -48,12 +48,11 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_BROKER_ID: 1
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   mediscope_app:
       build: .
@@ -73,7 +72,7 @@ services:
         - DB_USER=mediscope_user
         - DB_PASSWORD=mediscope_password
         - DB_NAME=mediscope
-        - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+        - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       command: tail -f /dev/null
 
 volumes:

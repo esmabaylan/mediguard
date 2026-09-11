@@ -8,5 +8,6 @@ class Settings:
     KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:9092")
     PRESCRIPTION_TOPIC = "prescriptions_stream"
     RISK_ALERTS_TOPIC = "risk_alerts_stream"
+    ALERTS_TOPIC: str = "alerts_stream"
 
 settings = Settings()

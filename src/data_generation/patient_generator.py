@@ -5,14 +5,14 @@ import pandas as pd
 from sqlalchemy import create_engine
 import sys
 from src.core.config import settings
-
+from src.utils.logger import logger
 
 from src.core.db import Base
 from src.models.patient import Patient
 
 
 def generate_patients(num_patients=600):
-    print(f"{num_patients} adet sentetik hasta üretiliyor...")
+    logger.info(f"{num_patients} adet sentetik hasta üretiliyor...")
     patients = []
     
     chronic_diseases_list = ["Hipertansiyon", "Tip 2 Diyabet", "Astım", "KOAH", "Kalp Yetmezliği", None, None, None]
@@ -57,7 +57,7 @@ def generate_patients(num_patients=600):
 
 if __name__ == "__main__":
     try:
-        print("Veritabanı şeması kontrol ediliyor...")
+        logger.info("Veritabanı şeması kontrol ediliyor...")
         engine_uri = settings.DB_URI
         engine = create_engine(engine_uri)
         
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         with engine.begin() as conn:
             df_patients.to_sql("patients", con=conn, if_exists="append", index=False)
             
-        print(f"\nİşlem Başarılı: {len(df_patients)} hasta veritabanına eklendi.")
+        logger.info(f"\nİşlem Başarılı: {len(df_patients)} hasta veritabanına eklendi.")
     except Exception as e:
-        print(f"\nHata: {e}")
+        logger.error(f"\nHata: {e}")
         sys.exit(1)
