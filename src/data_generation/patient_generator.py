@@ -9,9 +9,10 @@ from src.utils.logger import logger
 
 from src.core.db import Base
 from src.models.patient import Patient
+from src.utils.helpers import generate_mock_person, generate_mock_tckn
 
 
-def generate_patients(num_patients=600):
+def generate_patients(num_patients=10000):
     logger.info(f"{num_patients} adet sentetik hasta üretiliyor...")
     patients = []
     
@@ -43,12 +44,17 @@ def generate_patients(num_patients=600):
             else:
                 chronic = None
         else:
+            
+    
 
             chronic = random.choice(["Hipertansiyon", "Tip 2 Diyabet", "Astım", "KOAH", "Kalp Yetmezliği", None, None, None])
+        cinsiyet, ad, soyad = generate_mock_person()
         patients.append({
-            "patient_id": str(uuid.uuid4()),
+            "patient_id": generate_mock_tckn(),
+            "first_name": ad,
+            "last_name": soyad,
+            "gender": cinsiyet,
             "age": age,
-            "gender": random.choice(["Erkek", "Kadın"]),
             "weight_kg": weight_kg,
             "chronic_disease": chronic
         })
@@ -63,7 +69,7 @@ if __name__ == "__main__":
         
         Base.metadata.create_all(bind=engine)
         
-        df_patients = generate_patients(600)
+        df_patients = generate_patients(10000)
         
         with engine.begin() as conn:
             df_patients.to_sql("patients", con=conn, if_exists="append", index=False)

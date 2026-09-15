@@ -6,3 +6,5 @@ selenium==4.48
 beautifulsoup4==4.13.4
 pdfplumber==0.11.10
 pytest
+streamlit
+fastapi
